@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MyToken is ERC20 {
     constructor(uint256 initialSupply) ERC20("MyToken", "MTK") {
-        _mint(msg.sender, initialSupply * (10 ** decimals())); // Mint initial supply to deployer
+        _mint(msg.sender, initialSupply); // Mint initial supply to deployer
     }
 
     function add100(uint someNumber) public view returns (uint) {
