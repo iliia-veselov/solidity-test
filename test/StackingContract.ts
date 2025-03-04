@@ -33,7 +33,7 @@ describe("StakingContract", function () {
 
 
         const StakingContract = await ethers.getContractFactory("StakingContract", deployer);
-        stakingContract = await StakingContract.deploy(stakingToken, rewardToken);
+        stakingContract = await StakingContract.deploy(stakingToken, rewardToken, deployer);
         await stakingContract.waitForDeployment();
 
         owner = deployer;
@@ -51,8 +51,8 @@ describe("StakingContract", function () {
 
             const userStakingContract = stakingContract.connect(user);
 
-            await stakingToken.connect(user).approve(stakingContract.target, stakeAmount);
-            await userStakingContract.stake(1000);
+            await stakingToken.connect(user).approve(stakingContract.getAddress(), stakeAmount);
+            await userStakingContract.stake(stakeAmount);
 
 
             expect(await stakingContract.balanceOf(user.address)).to.equal(stakeAmount);
@@ -64,19 +64,47 @@ describe("StakingContract", function () {
 
             const userStakingContract = stakingContract.connect(user);
 
-            await stakingToken.connect(user).approve(stakingContract.target, stakeAmount);
-            await userStakingContract.stake(1000);
+            await stakingToken.connect(user).approve(stakingContract.getAddress(), stakeAmount);
+            await rewardToken.connect(user).approve(stakingContract.getAddress(), stakeAmount);
+
+            await userStakingContract.stake(stakeAmount);
             
             const balanceAfterStake = await stakingContract.balanceOf(user.address);
 
             expect(balanceAfterStake).to.equal(stakeAmount);
 
-            await userStakingContract.unstake(1000);
+            await userStakingContract.unstake(stakeAmount);
 
             const balanceAfterUnstake = await stakingContract.balanceOf(user.address);
             expect(balanceAfterUnstake).to.equal(balanceAfterStake - stakeAmount);
 
+        });
+        
+        it("Stake, reward ,unstake all and check stacked amount", async () => {
+            let stakeAmount = 1000n;
+            let rewardAmount = 500n;
+            await stakingToken.transfer(user.address, stakeAmount);
 
+            const userStakingContract = stakingContract.connect(user);
+
+            await stakingToken.connect(user).approve(stakingContract.getAddress(), stakeAmount+rewardAmount);
+            await stakingToken.connect(deployer).approve(stakingContract.getAddress(), stakeAmount);
+            await rewardToken.connect(user).approve(stakingContract.getAddress(), stakeAmount);
+
+            await userStakingContract.stake(stakeAmount);
+            
+            const balanceAfterStake = await stakingContract.balanceOf(user.address);
+
+            expect(balanceAfterStake).to.equal(stakeAmount);
+
+            await stakingContract.addRewards(user.address, rewardAmount);
+
+            await userStakingContract.unstake(stakeAmount);
+
+            expect(await stakingToken.balanceOf(user.address)).to.equal(stakeAmount + rewardAmount);
+
+            const balanceAfterUnstake = await stakingContract.balanceOf(user.address);
+            expect(balanceAfterUnstake).to.equal(balanceAfterStake - stakeAmount);
 
         });
     });
