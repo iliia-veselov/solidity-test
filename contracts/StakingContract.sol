@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "hardhat/console.sol";
 
 contract StakingContract is Ownable {
     IERC20 public stakingToken;  // Token that users stake
@@ -18,18 +19,36 @@ contract StakingContract is Ownable {
         stakingToken = IERC20(_stakingToken);
         rewardToken = IERC20(_rewardToken);
     }
+    
+
+    /**
+     * @dev Balance of address
+     */
+    function balanceOf(address callerAddress) public view returns (uint256)  {
+        return stakers[callerAddress];
+    }
+
 
     /**
      * @dev Stake tokens into the contract.
      */
     function stake(uint256 amount) external {
         require(amount > 0, "Amount must be greater than 0");
-
+        console.log("stake - amount: ", amount);
+        console.log("stake - transfering stakingToken");
+        console.log("stake - contract balance before stakingToken transfer: ", stakingToken.balanceOf(address(this)));
+        console.log("stake - user balance before stakingToken transfer: ", stakingToken.balanceOf(msg.sender));
         stakingToken.transferFrom(msg.sender, address(this), amount);
+        console.log("stake - contract balance after stakingToken transfer: ", stakingToken.balanceOf(address(this)));
+        console.log("stake - user balance after stakingToken transfer: ", stakingToken.balanceOf(msg.sender));
 
         stakers[msg.sender] += amount;
-
+        console.log("stake - transfering rewardToken");
+        console.log("stake - contract balance before rewardToken transfer: ", rewardToken.balanceOf(address(this)));
+        console.log("stake - user balance before rewardToken transfer: ", rewardToken.balanceOf(msg.sender));
         rewardToken.transfer(msg.sender, amount);
+        console.log("stake - contract balance after rewardToken transfer: ", rewardToken.balanceOf(address(this)));
+        console.log("stake - user balance after rewardToken transfer: ", rewardToken.balanceOf(msg.sender));
 
         emit Staked(msg.sender, amount);
     }
@@ -40,14 +59,27 @@ contract StakingContract is Ownable {
     function unstake(uint256 amount) external {
         uint256 balance = stakers[msg.sender];
         require(balance >= amount, "Insufficient balance");
+        
+        console.log("unstake - amount: ", amount);
+        console.log("unstake - userAddress: ", msg.sender);
+        console.log("unstake - contractAddress: ", address(this));
 
+        console.log("unstake - transfering stakingToken");
+        console.log("unstake - contract balance before stakingToken transfer: ", stakingToken.balanceOf(address(this)));
+        console.log("unstake - user balance before stakingToken transfer: ", stakingToken.balanceOf(msg.sender));
         stakingToken.transfer(msg.sender, amount);
+        console.log("unstake - contract balance after stakingToken transfer: ", stakingToken.balanceOf(address(this)));
+        console.log("unstake - user balance after stakingToken transfer: ", stakingToken.balanceOf(msg.sender));
 
         balance -= amount;
         stakers[msg.sender] = balance;
 
+        console.log("unstake - transfering rewardToken");
+        console.log("unstake - contract balance before rewardToken transfer: ", rewardToken.balanceOf(address(this)));
+        console.log("unstake - user balance before rewardToken transfer: ", rewardToken.balanceOf(msg.sender));
         rewardToken.transferFrom(msg.sender, address(this), amount);
-
+        console.log("unstake - contract balance after rewardToken transfer: ", rewardToken.balanceOf(address(this)));
+        console.log("unstake - user balance after rewardToken transfer: ", rewardToken.balanceOf(msg.sender));
         emit Unstaked(msg.sender, amount);
     }
 

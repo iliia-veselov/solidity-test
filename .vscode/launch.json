@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Debug Hardhat Tests",
+        "skipFiles": ["<node_internals>/**"],
+        "program": "${workspaceFolder}/node_modules/.bin/hardhat",
+        "args": ["test"],
+        "console": "integratedTerminal",
+        "autoAttachChildProcesses": true,
+        "cwd": "${workspaceFolder}",
+        "smartStep": true
+      }
+    ]
+  }
+  

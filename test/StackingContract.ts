@@ -16,7 +16,8 @@ describe("StakingContract", function () {
     let initSupply = 100_000;
 
     let stakingContract: StakingContract;
-    let myToken: MyToken;
+    let stakingToken: MyToken;
+    let rewardToken: MyToken;
 
     before(async () => {
         // Getting of signers.
@@ -24,76 +25,59 @@ describe("StakingContract", function () {
 
         // Deployment of the factory.
         const MyToken = await ethers.getContractFactory("MyToken", deployer);
-        myToken = await MyToken.deploy(initSupply);
-        await myToken.deployed();
+        stakingToken = await MyToken.deploy(initSupply);
+        await stakingToken.waitForDeployment();
+        
+        rewardToken = await MyToken.deploy(initSupply);
+        await rewardToken.waitForDeployment();
 
 
         const StakingContract = await ethers.getContractFactory("StakingContract", deployer);
-        stakingContract = await StakingContract.deploy();
-        await stakingContract.deployed();
+        stakingContract = await StakingContract.deploy(stakingToken, rewardToken);
+        await stakingContract.waitForDeployment();
 
         owner = deployer;
+        await rewardToken.transfer(stakingContract.getAddress(), 50000);
 
         snapshotA = await takeSnapshot();
     });
 
     afterEach(async () => await snapshotA.restore());
 
-    describe("# Deployment", function () {
-        it("Sets the deployer as the initial owner when initialization", async () => {
-            // Deployment.
-            const StakingContract = await ethers.getContractFactory("StakingContract", deployer);
-            const StakingContract = await StakingContract.deploy();
-            await StakingContract.deployed();
+    describe("# Staking contract tests", function () {
+        it("Stake and check stacked amount", async () => {
+            let stakeAmount = 1000;
+            await stakingToken.transfer(user.address, stakeAmount);
 
-            expect(await StakingContract.owner()).to.be.eq(deployer.address);
+            const userStakingContract = stakingContract.connect(user);
+
+            await stakingToken.connect(user).approve(stakingContract.target, stakeAmount);
+            await userStakingContract.stake(1000);
+
+
+            expect(await stakingContract.balanceOf(user.address)).to.equal(stakeAmount);
         });
+        
+        it("Stake, unstake all and check stacked amount", async () => {
+            let stakeAmount = 1000n;
+            await stakingToken.transfer(user.address, stakeAmount);
 
-        it("Sets the positive even number with '2' when initialization", async () => {
-            // Deployment.
-            const StakingContract = await ethers.getContractFactory("StakingContract", deployer);
-            const StakingContract = await StakingContract.deploy();
-            await StakingContract.deployed();
+            const userStakingContract = stakingContract.connect(user);
 
-            expect(await StakingContract.positiveEven()).to.be.eq(2);
-        });
-    });
+            await stakingToken.connect(user).approve(stakingContract.target, stakeAmount);
+            await userStakingContract.stake(1000);
+            
+            const balanceAfterStake = await stakingContract.balanceOf(user.address);
 
-    describe("# Setting of the positive even number", function () {
-        it("Sets", async () => {
-            // Saving of the previous value.
-            const positiveEvenBefore = await stakingContract.positiveEven();
+            expect(balanceAfterStake).to.equal(stakeAmount);
 
-            // Setting.
-            const newPositiveEven = 4;
-            const tx = await stakingContract.connect(owner).setPositiveEven(newPositiveEven);
-            // Check of the event emission.
-            await expect(tx)
-                .to.emit(stakingContract, "PositiveEvenSet")
-                .withArgs(positiveEvenBefore, newPositiveEven);
+            await userStakingContract.unstake(1000);
 
-            // Check of values.
-            expect(await stakingContract.positiveEven()).to.be.eq(newPositiveEven);
-        });
+            const balanceAfterUnstake = await stakingContract.balanceOf(user.address);
+            expect(balanceAfterUnstake).to.equal(balanceAfterStake - stakeAmount);
 
-        it("Reverts when setting if a zero value", async () => {
-            await expect(stakingContract.connect(owner).setPositiveEven(0)).to.be.revertedWithCustomError(
-                stakingContract,
-                "SetPositiveNumberToZero"
-            );
-        });
 
-        it("Reverts when setting if an odd value", async () => {
-            const oddNumber = 1;
-            await expect(stakingContract.connect(owner).setPositiveEven(oddNumber))
-                .to.be.revertedWithCustomError(stakingContract, "SetEvenToOddNumber")
-                .withArgs(oddNumber);
-        });
 
-        it("Prevents non-owners from setting", async () => {
-            await expect(stakingContract.connect(user).setPositiveEven(4)).to.be.revertedWith(
-                "Ownable: caller is not the owner"
-            );
         });
     });
 });
